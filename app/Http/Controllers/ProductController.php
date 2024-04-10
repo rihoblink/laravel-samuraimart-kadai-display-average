@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\MajorCategory;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -13,11 +14,32 @@ class ProductController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::all();
+        $keyword = $request->keyword;
 
-        return view('products.index', compact('products'));
+      
+
+        if ($request->category !== null) {
+            $products = Product::where('category_id', $request->category)->sortable()->paginate(15);
+            $total_count = Product::where('category_id', $request->category)->count();
+            $category = Category::find($request->category);
+            $major_category = MajorCategory::find($category->major_category_id);
+        } elseif ($keyword !== null) {
+            $products = Product::where('name', 'like', "%{$keyword}%")->sortable()->paginate(15);
+            $total_count = $products->total();
+            $category = null;
+            $major_category = null;
+        } else {
+            $products = Product::sortable()->paginate(15);
+            $total_count = "";
+            $category = null;
+            $major_category = null;
+        }
+        $categories = Category::all();
+        $major_categories = MajorCategory::all();
+
+        return view('products.index', compact('products', 'category', 'major_category', 'categories', 'major_categories', 'total_count', 'keyword'));
     }
 
     /**
@@ -28,7 +50,7 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Category::all();
-        
+
         return view('products.create', compact('categories'));
     }
 
@@ -58,7 +80,9 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        return view('products.show', compact('product'));
+        $reviews = $product->reviews()->get();
+
+        return view('products.show', compact('product', 'reviews'));
     }
 
     /**
@@ -70,7 +94,7 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $categories = Category::all();
-        
+
         return view('products.edit', compact('product', 'categories'));
     }
 
